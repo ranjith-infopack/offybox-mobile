@@ -4,6 +4,9 @@ import '../../services/storage_service.dart';
 import '../../services/auth_service.dart';
 import '../home/home_screen.dart';
 import '../quotation/quotation_list_screen.dart';
+import '../../widgets/app_sidebar.dart';
+import '../../constants/app_colors.dart';
+
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -83,7 +86,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
-      drawer: _buildDrawer(),
+      drawer: AppSidebar(
+        activeItem: 'Dashboard',
+        userName: _userName,
+        userEmail: _userEmail,
+        tenantName: _tenantName,
+        onItemTap: (id) {
+          Navigator.pop(context);
+          if (id == 'Users') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          } else if (id == 'Quotation') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const QuotationListScreen()),
+            );
+          }
+          // Add other navigation logic as screens are implemented
+        },
+        onLogout: () {
+          Navigator.pop(context);
+          _handleLogout();
+        },
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           _loadUserInfo();
@@ -330,181 +357,5 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Column(
-        children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 24,
-              bottom: 24,
-              left: 20,
-              right: 20,
-            ),
-            decoration: const BoxDecoration(
-              color: Color(0xFF7C3AED),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Logo
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 120,
-                  height: 40,
-                  fit: BoxFit.contain,
-                  color: Colors.white,
-                  colorBlendMode: BlendMode.srcIn,
-                ),
-                const SizedBox(height: 20),
-                // Tenant name
-                Text(
-                  _tenantName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // User info
-                Text(
-                  _userName,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  _userEmail,
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Menu items
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildDrawerItem(
-                  icon: Icons.dashboard,
-                  title: 'Dashboard',
-                  selected: true,
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.store,
-                  title: 'Outlets',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomeScreen()),
-                    );
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.description,
-                  title: 'Quotations',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const QuotationListScreen()),
-                    );
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.shopping_cart,
-                  title: 'Orders',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.inventory,
-                  title: 'Products',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.receipt_long,
-                  title: 'Invoices',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.payments,
-                  title: 'Payments',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                const Divider(),
-                _buildDrawerItem(
-                  icon: Icons.settings,
-                  title: 'Settings',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // Logout
-          Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade200)),
-            ),
-            child: _buildDrawerItem(
-              icon: Icons.logout,
-              title: 'Logout',
-              textColor: Colors.red,
-              onTap: () {
-                Navigator.pop(context);
-                _handleLogout();
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    bool selected = false,
-    Color? textColor,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: selected ? const Color(0xFF7C3AED) : textColor ?? Colors.grey.shade700,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: selected ? const Color(0xFF7C3AED) : textColor ?? Colors.grey.shade800,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-        ),
-      ),
-      selected: selected,
-      selectedTileColor: const Color(0xFF7C3AED).withValues(alpha: 0.1),
-      onTap: onTap,
-    );
-  }
 }
