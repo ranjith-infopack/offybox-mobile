@@ -28,14 +28,27 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    // Helper to get nested values safely
+    String? getNested(Map<String, dynamic> data, List<String> path) {
+      dynamic current = data;
+      for (var key in path) {
+        if (current is Map && current.containsKey(key)) {
+          current = current[key];
+        } else {
+          return null;
+        }
+      }
+      return current?.toString();
+    }
+
     return Product(
       id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
-      categoryName: json['category'] != null ? json['category']['name']?.toString() : json['category_name']?.toString(),
-      brandName: json['brand'] != null ? json['brand']['name']?.toString() : json['brand_name']?.toString(),
+      categoryName: getNested(json, ['category', 'name']) ?? json['category_name']?.toString(),
+      brandName: getNested(json, ['brand', 'name']) ?? json['brand_name']?.toString(),
       hsn: json['hsn']?.toString(),
-      unit: json['unit']?.toString() ?? json['unit_name']?.toString(),
+      unit: json['unit']?.toString() ?? json['unit_name']?.toString() ?? getNested(json, ['unit', 'name']),
       mrp: json['mrp']?.toString() ?? '0',
       sellingPrice: json['sale_price']?.toString() ?? json['price']?.toString() ?? '0',
       stock: json['stock']?.toString() ?? '0',

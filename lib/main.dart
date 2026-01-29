@@ -8,6 +8,8 @@ import 'screens/ledger/ledger_form_screen.dart';
 import 'screens/order/order_list_screen.dart';
 import 'screens/order/order_form_screen.dart';
 import 'screens/product/product_list_screen.dart';
+import 'screens/invoice/invoice_list_screen.dart';
+import 'screens/payment/payment_list_screen.dart';
 
 void main() {
   runApp(const OffyboxApp());
@@ -39,6 +41,8 @@ class OffyboxApp extends StatelessWidget {
         '/orders': (context) => const OrderListScreen(),
         '/orders/add': (context) => const OrderFormScreen(),
         '/products': (context) => const ProductListScreen(),
+        '/invoices': (context) => const InvoiceListScreen(),
+        '/payments': (context) => const PaymentListScreen(),
       },
     );
   }

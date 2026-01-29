@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import '../../models/product.dart';
-import '../../services/product_service.dart';
+import '../../models/invoice.dart';
+import '../../services/invoice_service.dart';
 
-class ProductListScreen extends StatefulWidget {
-  const ProductListScreen({super.key});
+class InvoiceListScreen extends StatefulWidget {
+  const InvoiceListScreen({super.key});
 
   @override
-  State<ProductListScreen> createState() => _ProductListScreenState();
+  State<InvoiceListScreen> createState() => _InvoiceListScreenState();
 }
 
-class _ProductListScreenState extends State<ProductListScreen> {
+class _InvoiceListScreenState extends State<InvoiceListScreen> {
   final ScrollController _scrollController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
   
-  List<Product> _products = [];
+  List<Invoice> _invoices = [];
   bool _isLoading = true;
   String? _error;
+  int _currentPage = 1;
 
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    _loadInvoices();
   }
 
   @override
@@ -30,18 +31,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
     super.dispose();
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadInvoices() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final result = await ProductService.getProducts(limit: 100);
+      final result = await InvoiceService.getInvoices(page: _currentPage, limit: 100);
       if (mounted) {
         setState(() {
           if (result['success']) {
-            _products = result['data'] as List<Product>;
+            _invoices = (result['data'] as InvoiceListResponse).data;
           } else {
             _error = result['message'];
           }
@@ -67,18 +68,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Products',
+          'Invoices',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Navigate to Add Product screen
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Add Invoice feature coming soon!')),
+          );
         },
         backgroundColor: const Color(0xFF7C3AED),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add Product', style: TextStyle(color: Colors.white)),
+        label: const Text('Add Invoice', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -98,13 +101,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
             Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
             const SizedBox(height: 16),
             Text(
-              _error ?? 'Failed to load products',
+              _error ?? 'Failed to load invoices',
               style: TextStyle(color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadProducts,
+              onPressed: _loadInvoices,
               child: const Text('Retry'),
             ),
           ],
@@ -112,15 +115,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
     }
 
-    if (_products.isEmpty) {
+    if (_invoices.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
+            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
-              'No products found',
+              'No invoices found',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -132,7 +135,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadProducts,
+      onRefresh: _loadInvoices,
       color: const Color(0xFF7C3AED),
       child: SingleChildScrollView(
         controller: _scrollController,
@@ -142,50 +145,48 @@ class _ProductListScreenState extends State<ProductListScreen> {
           child: DataTable(
             headingRowColor: MaterialStateProperty.all(const Color(0xFF7C3AED).withOpacity(0.05)),
             columns: const [
-              DataColumn(label: Text('Code', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Brand', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('MRP', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Selling Price', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Stock', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Invoice No', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Ledger', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Items', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Net Amount', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Tax Amount', style: TextStyle(fontWeight: FontWeight.bold))),
+              DataColumn(label: Text('Total Amount', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
               DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
             ],
-            rows: _products.map((product) => _buildProductRow(product)).toList(),
+            rows: _invoices.map((invoice) => _buildInvoiceRow(invoice)).toList(),
           ),
         ),
       ),
     );
   }
 
-  DataRow _buildProductRow(Product product) {
+  DataRow _buildInvoiceRow(Invoice invoice) {
     return DataRow(
       cells: [
-        DataCell(Text(product.code, style: const TextStyle(fontWeight: FontWeight.w500))),
+        DataCell(Text(invoice.invoiceNo, style: const TextStyle(fontWeight: FontWeight.w500))),
+        DataCell(Text(invoice.formattedDate)),
         DataCell(SizedBox(
           width: 150,
-          child: Text(product.name, overflow: TextOverflow.ellipsis),
+          child: Text(invoice.outletName ?? '-', overflow: TextOverflow.ellipsis),
         )),
-        DataCell(Text(product.categoryName ?? '-')),
-        DataCell(Text(product.brandName ?? '-')),
-        DataCell(Text(product.unit ?? '-')),
-        DataCell(Text('₹${product.mrp}')),
-        DataCell(Text('₹${product.sellingPrice}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)))),
-        DataCell(Text(product.stock)),
+        DataCell(Text(invoice.itemCount.toString())),
+        DataCell(Text('₹${invoice.netAmount}')),
+        DataCell(Text('₹${invoice.taxAmount}')),
+        DataCell(Text('₹${invoice.totalAmount}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)))),
         DataCell(Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: product.status == 'ACTIVE' ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+            color: _getStatusColor(invoice.status).withOpacity(0.1),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
-            product.status,
+            invoice.status,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: product.status == 'ACTIVE' ? Colors.green : Colors.red,
+              color: _getStatusColor(invoice.status),
             ),
           ),
         )),
@@ -200,7 +201,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.edit, size: 20, color: Colors.orange),
+              icon: const Icon(Icons.print, size: 20, color: Colors.grey),
               onPressed: () {},
               constraints: const BoxConstraints(),
               padding: EdgeInsets.zero,
@@ -209,5 +210,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
         )),
       ],
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'PAID':
+      case 'COMPLETED':
+        return Colors.green;
+      case 'PARTIAL':
+        return Colors.orange;
+      case 'PENDING':
+      case 'DUE':
+        return Colors.blue;
+      case 'CANCELLED':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 }

@@ -171,6 +171,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               iconBgColor: const Color(0xFFD1FAE5),
               label: 'Invoices',
               value: '1',
+              onTap: () {
+                Navigator.pushNamed(context, '/invoices');
+              },
             )),
           ],
         ),
@@ -468,6 +471,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Invoices',
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.pushNamed(context, '/invoices');
                   },
                 ),
                 _buildDrawerItem(
@@ -475,6 +479,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Payments',
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.pushNamed(context, '/payments');
                   },
                 ),
                 const Divider(),

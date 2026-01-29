@@ -21,10 +21,28 @@ class ProductService {
 
     if (result['success']) {
       try {
-        final productsData = result['data']['data'] as List? ?? [];
-        final products = productsData
-            .map((e) => Product.fromJson(e))
+        final body = result['data'];
+        final List dataList;
+        
+        if (body is List) {
+          dataList = body;
+        } else if (body is Map) {
+          // Check for 'data' key which might contain the list or another nested 'data'
+          if (body['data'] is List) {
+            dataList = body['data'];
+          } else if (body['data'] is Map && body['data']['data'] is List) {
+            dataList = body['data']['data'];
+          } else {
+            dataList = [];
+          }
+        } else {
+          dataList = [];
+        }
+
+        final products = dataList
+            .map((e) => Product.fromJson(e as Map<String, dynamic>))
             .toList();
+            
         return {
           'success': true,
           'data': products,
@@ -33,7 +51,7 @@ class ProductService {
         print('Error parsing products: $e');
         return {
           'success': false,
-          'message': 'Error parsing product data: $e',
+          'message': 'Error processing product data. Please contact support.',
         };
       }
     }

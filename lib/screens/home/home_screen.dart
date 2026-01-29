@@ -320,6 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: 'Invoices',
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.pushNamed(context, '/invoices');
                   },
                 ),
                 _buildDrawerItem(
@@ -327,6 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: 'Payments',
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.pushNamed(context, '/payments');
                   },
                 ),
                 const Divider(),
