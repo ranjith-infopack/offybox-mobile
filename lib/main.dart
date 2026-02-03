@@ -7,9 +7,12 @@ import 'screens/ledger/ledger_list_screen.dart';
 import 'screens/ledger/ledger_form_screen.dart';
 import 'screens/order/order_list_screen.dart';
 import 'screens/order/order_form_screen.dart';
+import 'screens/order/order_detail_screen.dart'; // Added this import
 import 'screens/product/product_list_screen.dart';
 import 'screens/invoice/invoice_list_screen.dart';
 import 'screens/payment/payment_list_screen.dart';
+import 'screens/quotation/quotation_form_screen.dart';
+import 'screens/quotation/quotation_list_screen.dart';
 
 void main() {
   runApp(const OffyboxApp());
@@ -40,9 +43,15 @@ class OffyboxApp extends StatelessWidget {
         '/ledgers/add': (context) => const LedgerFormScreen(),
         '/orders': (context) => const OrderListScreen(),
         '/orders/add': (context) => const OrderFormScreen(),
+        '/orders/details': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return OrderDetailScreen(orderId: args['orderId']);
+        },
         '/products': (context) => const ProductListScreen(),
         '/invoices': (context) => const InvoiceListScreen(),
         '/payments': (context) => const PaymentListScreen(),
+        '/quotations': (context) => const QuotationListScreen(),
+        '/quotations/add': (context) => const QuotationFormScreen(),
       },
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/order.dart';
 import '../../services/order_service.dart';
 import 'quotation_detail_screen.dart';
+import 'quotation_form_screen.dart';
 
 class QuotationListScreen extends StatefulWidget {
   const QuotationListScreen({super.key});
@@ -107,7 +108,104 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(child: _buildBody()),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const QuotationFormScreen(),
+            ),
+          ).then((value) {
+            if (value == true) {
+              _loadQuotations();
+            }
+          });
+        },
+        backgroundColor: const Color(0xFF7C3AED),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Add Quotation',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      color: const Color(0xFF7C3AED), // Reverted to purple
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        children: [
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _buildFilterChip('All', isSelected: true),
+                const SizedBox(width: 8),
+                _buildFilterChip('Pending'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Accepted'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Cancelled'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, {bool isSelected = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF7C3AED) : Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(25),
+        border: isSelected ? null : Border.all(color: Colors.white, width: 1),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -182,11 +280,11 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
 
   Widget _buildQuotationCard(Order quotation) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.08),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
         onTap: () {
@@ -197,129 +295,110 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header row
+              // Top Section: Party Name and Amount
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Quotation number
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          quotation.orderNo,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2937),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          quotation.formattedDate,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      quotation.outlet?.companyName ?? 'Unknown Party',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Status badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(quotation.orderStatus).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      quotation.orderStatus.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _getStatusColor(quotation.orderStatus),
-                      ),
+                  Text(
+                    '₹ ${(double.tryParse(quotation.totalAmount) ?? 0).toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF7C3AED),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Customer and amount
+              const SizedBox(height: 8),
+              // Quotation Number and Status Dropdown
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Customer
-                  Expanded(
+                  Text(
+                    quotation.orderNo,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.3)),
+                    ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              quotation.outlet?.companyName.isNotEmpty == true
-                                  ? quotation.outlet!.companyName[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: Color(0xFF7C3AED),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        Text(
+                          quotation.orderStatus,
+                          style: const TextStyle(
+                            color: Color(0xFF7C3AED),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                quotation.outlet?.companyName ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF374151),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                '${quotation.itemCount} item${quotation.itemCount != 1 ? 's' : ''}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF7C3AED)),
                       ],
                     ),
                   ),
-                  // Amount
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        quotation.formattedTotalAmount,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF7C3AED),
-                        ),
-                      ),
-                    ],
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Date
+              Text(
+                quotation.formattedDate,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1),
+              ),
+              // Bottom Section: Actions
+              Row(
+                children: [
+                  const Icon(Icons.swap_horiz, size: 20, color: Color(0xFF7C3AED)),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Convert To Invoice',
+                    style: TextStyle(
+                      color: Color(0xFF7C3AED),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.chat, size: 20, color: Colors.green),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.more_vert, color: Colors.black54),
                 ],
               ),
             ],
