@@ -33,11 +33,34 @@ class OutletService {
     final result = await ApiService.get('${ApiService.ENDPOINT_OUTLETS}/$id');
 
     if (result['success']) {
-      final outlet = Outlet.fromJson(result['data']);
+      final rawData = result['data'];
+      print('OutletService.getOutletById RAW DATA: $rawData'); // DEBUG LOG
+      
+      // Check if the actual outlet object is wrapped in a 'data' key
+      final outletMap = (rawData is Map && rawData.containsKey('data')) 
+          ? rawData['data'] 
+          : rawData;
+          
+      final outlet = Outlet.fromJson(outletMap);
+      print('OutletService.getOutletById PARSED ADDRESSES: ${outlet.addresses.length}'); // DEBUG LOG
       return {
         'success': true,
         'data': outlet,
       };
+    }
+    
+    // If singular 404s, try plural as a fallback - common REST inconsistency
+    if (result['message'].toString().contains('404')) {
+      print('OutletService.getOutletById trying plural fallback...');
+      final pluralResult = await ApiService.get('/v1/outlets/$id');
+      if (pluralResult['success']) {
+        final rawData = pluralResult['data'];
+        final outletMap = (rawData is Map && rawData.containsKey('data')) ? rawData['data'] : rawData;
+        return {
+          'success': true,
+          'data': Outlet.fromJson(outletMap),
+        };
+      }
     }
 
     return result;

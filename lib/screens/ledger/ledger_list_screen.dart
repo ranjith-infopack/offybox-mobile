@@ -157,60 +157,7 @@ class _LedgerListScreenState extends State<LedgerListScreen> {
       drawer: _buildDrawer(),
       body: Column(
         children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search ledger...',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF7C3AED)),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearch('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onChanged: _onSearch,
-            ),
-          ),
-          
-          // Header Row
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.grey.shade100,
-            child: const Row(
-              children: [
-                Expanded(flex: 2, child: Text('Ledger Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                Expanded(flex: 1, child: Text('Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                Expanded(flex: 2, child: Text('Sales Person', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                Expanded(flex: 1, child: Text('O/S', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.right)),
-                SizedBox(width: 8),
-                Text('Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              ],
-            ),
-          ),
-
-          // Content
+          _buildHeader(),
           Expanded(
             child: _buildContent(),
           ),
@@ -225,7 +172,92 @@ class _LedgerListScreenState extends State<LedgerListScreen> {
         },
         backgroundColor: const Color(0xFF7C3AED),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add Ledger', style: TextStyle(color: Colors.white)),
+        label: const Text('Add Ledger', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      color: const Color(0xFF7C3AED),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        children: [
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search ledger...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearch('');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onChanged: _onSearch,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _buildFilterChip('All', isSelected: true),
+                const SizedBox(width: 8),
+                _buildFilterChip('Customers'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Suppliers'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Active'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Inactive'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, {bool isSelected = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF7C3AED) : Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(25),
+        border: isSelected ? null : Border.all(color: Colors.white, width: 1),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -283,10 +315,10 @@ class _LedgerListScreenState extends State<LedgerListScreen> {
     return RefreshIndicator(
       onRefresh: () => _loadLedgers(refresh: true),
       color: const Color(0xFF7C3AED),
-      child: ListView.separated(
+      child: ListView.builder(
         controller: _scrollController,
+        padding: const EdgeInsets.all(16),
         itemCount: _ledgers.length + (_isLoadingMore ? 1 : 0),
-        separatorBuilder: (context, index) => const Divider(height: 1, indent: 16, endIndent: 16),
         itemBuilder: (context, index) {
           if (index == _ledgers.length) {
             return const Center(
@@ -298,126 +330,165 @@ class _LedgerListScreenState extends State<LedgerListScreen> {
           }
 
           final ledger = _ledgers[index];
-          return _buildLedgerRow(ledger);
+          return _buildLedgerCard(ledger);
         },
       ),
     );
   }
 
-  Widget _buildLedgerRow(Outlet ledger) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OutletDetailScreen(outletId: ledger.id),
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            // Name
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    ledger.companyName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Color(0xFF1F2937),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (ledger.mobile != null && ledger.mobile!.isNotEmpty)
-                    Text(
-                      ledger.mobile!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                ],
-              ),
+  Widget _buildLedgerCard(Outlet ledger) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OutletDetailScreen(outletId: ledger.id),
             ),
-            
-            // Type
-            Expanded(
-              flex: 1,
-              child: Text(
-                ledger.outletType ?? '-',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ),
-
-            // Sales Person
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Section: Name and Outstanding
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    ledger.salesPerson?.fullName ?? '-',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (ledger.salesPerson?.email != null)
-                    Text(
-                      ledger.salesPerson!.email,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade500,
+                  Expanded(
+                    child: Text(
+                      ledger.companyName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  Text(
+                    '₹${ledger.outstanding}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF7C3AED),
+                    ),
+                  ),
                 ],
               ),
-            ),
-
-            // Outstanding
-            Expanded(
-              flex: 1,
-              child: Text(
-                '₹${ledger.outstanding}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.redAccent,
+              const SizedBox(height: 8),
+              // Mobile and Type/Status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.phone, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          ledger.mobile ?? 'No Mobile',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (ledger.status == 'ACTIVE') 
+                          ? Colors.green.withOpacity(0.1) 
+                          : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      ledger.status == 'ACTIVE' ? 'Active' : 'Inactive',
+                      style: TextStyle(
+                        color: (ledger.status == 'ACTIVE') ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Sales Person
+              if (ledger.salesPerson != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Sales Person: ${ledger.salesPerson!.fullName}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.right,
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1),
               ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // Status
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: ledger.status == 'ACTIVE' ? Colors.green.shade50 : Colors.red.shade50,
-                borderRadius: BorderRadius.circular(4),
+               // Bottom Section: Actions
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                         // View Details
+                         Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OutletDetailScreen(outletId: ledger.id),
+                            ),
+                          );
+                    },
+                    child: Row(
+                      children: [
+                        const Icon(Icons.visibility_outlined, size: 20, color: Color(0xFF7C3AED)),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'View Details',
+                          style: TextStyle(
+                            color: Color(0xFF7C3AED),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                   Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.call, size: 20, color: Colors.green), // Call action
+                  ),
+                   const SizedBox(width: 8),
+                  const Icon(Icons.more_vert, color: Colors.black54),
+                ],
               ),
-              child: Text(
-                ledger.status == 'ACTIVE' ? 'ACT' : 'INA',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: ledger.status == 'ACTIVE' ? Colors.green.shade700 : Colors.red.shade700,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   Widget _buildDrawer() {
     return Drawer(

@@ -6,9 +6,26 @@ class OrderService {
     int page = 1,
     int limit = 20,
     String orderType = 'QUOTATION',
+    String? search,
+    String? orderStatus,
   }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+      'order_type': orderType,
+    };
+
+    if (search != null && search.isNotEmpty) {
+      queryParams['search'] = search;
+    }
+    
+    if (orderStatus != null && orderStatus != 'All') {
+      queryParams['order_status'] = orderStatus.toUpperCase();
+    }
+
     final response = await ApiService.get(
-      '${ApiService.ENDPOINT_ORDERS}?page=$page&limit=$limit&order_type=$orderType',
+      ApiService.ENDPOINT_ORDERS,
+      queryParams: queryParams,
     );
 
     if (response['success'] == true && response['data'] != null) {

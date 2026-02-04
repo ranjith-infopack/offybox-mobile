@@ -37,6 +37,7 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
   
   bool _isLoading = true;
   bool _isSubmitting = false;
+  bool _isLoadingOutletDetails = false;
 
   @override
   void initState() {
@@ -200,7 +201,7 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
       'order_type': 'QUOTATION',
     };
 
-    final result = await ApiService.post('/orders', payload);
+    final result = await ApiService.post(ApiService.ENDPOINT_ORDERS, payload);
 
     if (mounted) {
       setState(() => _isSubmitting = false);
@@ -277,7 +278,7 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
                   _buildSectionHeader('Quotation Items'),
                   const SizedBox(height: 12),
                   
-                  _buildItemsTable(),
+                  _buildItemsList(),
                   
                   const SizedBox(height: 12),
                   _buildAddMoreButton(),
@@ -297,6 +298,35 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
             ),
           ),
     );
+  }
+
+  Future<void> _fetchOutletDetails(String outletId) async {
+    setState(() => _isLoadingOutletDetails = true);
+    
+    try {
+      final result = await OutletService.getOutletById(outletId);
+      if (mounted) {
+        setState(() {
+          _isLoadingOutletDetails = false;
+          if (result['success']) {
+            final fullOutlet = result['data'] as Outlet;
+            _selectedLedger = fullOutlet; // Update with full details
+            // Auto-select addresses if available
+            _selectedBillingAddress = fullOutlet.billingAddress;
+            _selectedShippingAddress = fullOutlet.shippingAddress;
+          } else {
+             ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to load outlet details: ${result['message']}')),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingOutletDetails = false);
+        debugPrint('Error fetching outlet details: $e');
+      }
+    }
   }
 
   Widget _buildSectionHeader(String title) {
@@ -325,9 +355,12 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
       onChanged: (v) {
         setState(() {
           _selectedLedger = v;
-          _selectedBillingAddress = v?.billingAddress;
-          _selectedShippingAddress = v?.shippingAddress;
+          _selectedBillingAddress = null; // Reset selection until details load
+          _selectedShippingAddress = null;
         });
+        if (v != null) {
+          _fetchOutletDetails(v.id);
+        }
       },
       validator: (v) => v == null ? 'Please select a ledger' : null,
       isExpanded: true,
@@ -366,6 +399,33 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
 
   Widget _buildAddressDropdown({required bool isBilling}) {
     final addresses = _selectedLedger?.addresses ?? [];
+    
+    if (_isLoadingOutletDetails) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+            const SizedBox(width: 12),
+            Text('Loading addresses...', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+
+    if (addresses.isEmpty && _selectedLedger != null) {
+       return Container(
+         width: double.infinity,
+         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+         decoration: BoxDecoration(
+           color: Colors.grey.shade100,
+           borderRadius: BorderRadius.circular(8),
+           border: Border.all(color: Colors.grey.shade300),
+         ),
+         child: const Text('No addresses found for this ledger', style: TextStyle(color: Colors.red, fontSize: 13)),
+       );
+    }
+
     return DropdownButtonFormField<OutletAddress>(
       value: isBilling ? _selectedBillingAddress : _selectedShippingAddress,
       hint: Text(isBilling ? 'Select Billing Address' : 'Select Shipping Address', style: const TextStyle(fontSize: 14)),
@@ -379,47 +439,13 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
     );
   }
 
-  Widget _buildItemsTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(40),   // #
-          1: FixedColumnWidth(180),  // Product
-          2: FixedColumnWidth(80),   // HSN
-          3: FixedColumnWidth(60),   // Unit
-          4: FixedColumnWidth(70),   // Qty
-          5: FixedColumnWidth(90),   // Price
-          6: FixedColumnWidth(80),   // Discount
-          7: FixedColumnWidth(70),   // Tax %
-          8: FixedColumnWidth(100),  // Net Amt
-          9: FixedColumnWidth(100),  // Tax Amt
-          10: FixedColumnWidth(100), // Total
-          11: FixedColumnWidth(40),  // Delete
-        },
-        border: TableBorder.all(color: Colors.grey.shade300, width: 0.5, borderRadius: BorderRadius.circular(4)),
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: [
-          _buildTableHeader(),
-          ...List.generate(_items.length, (index) => _buildItemRow(index)),
-        ],
-      ),
+  Widget _buildItemsList() {
+    return Column(
+      children: List.generate(_items.length, (index) => _buildItemCard(index)),
     );
   }
 
-  TableRow _buildTableHeader() {
-    return TableRow(
-      decoration: BoxDecoration(color: Colors.grey.shade100),
-      children: [
-        '#', 'Product *', 'HSN', 'Unit', 'Qty *', 'Price *', 'Disc', 'Tax %', 'Net Amt', 'Tax Amt', 'Total', ''
-      ].map((h) => Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(h, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.center),
-      )).toList(),
-    );
-  }
-
-  TableRow _buildItemRow(int index) {
+  Widget _buildItemCard(int index) {
     final item = _items[index];
     final qty = double.tryParse(item['qtyController'].text) ?? 0;
     final price = double.tryParse(item['priceController'].text) ?? 0;
@@ -428,95 +454,172 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
     final taxAmt = netAmt * (item['tax_rate'] / 100);
     final total = netAmt + taxAmt;
 
-    return TableRow(
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      color: Colors.grey.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Product Selection and Delete
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 4),
+                        child: Text('Product *', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<Product>(
+                            value: item['product'],
+                            hint: const Text('Select Product', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            isExpanded: true,
+                            icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                            items: _products.map((p) => DropdownMenuItem(
+                              value: p, 
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(child: Text(p.name, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                                  if (p.hsn != null && p.hsn!.isNotEmpty)
+                                    Text(' [${p.hsn!}]', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                ],
+                              )
+                            )).toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() {
+                                  item['product'] = v;
+                                  item['priceController'].text = v.sellingPrice;
+                                  item['tax_rate'] = double.tryParse(v.taxRate ?? '0') ?? 0.0;
+                                  _updateTotals();
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => _removeItemRow(index),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            
+            // Subtitle Info (HSN, Unit)
+            if (item['product'] != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 6, bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'HSN: ${item['product'].hsn ?? '-'} | Unit: ${item['product'].unit ?? '-'} | Tax: ${item['tax_rate']}%',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED), fontWeight: FontWeight.w500),
+                ),
+              ),
+
+            const SizedBox(height: 8),
+
+            // Row 2: Qty, Price, Discount Inputs
+            Row(
+              children: [
+                Expanded(child: _buildInput(item['qtyController'], 'Qty')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildInput(item['priceController'], 'Price')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildInput(item['discountController'], 'Disc.')),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 8),
+
+            // Row 3: Totals
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildTotalItem('Net', netAmt),
+                _buildTotalItem('Tax', taxAmt),
+                _buildTotalItem('Total', total, isBold: true),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInput(TextEditingController controller, String label) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // #
-        Center(child: Text('${index + 1}', style: const TextStyle(fontSize: 12))),
-        
-        // Product
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Product>(
-              value: item['product'],
-              hint: const Text('Select', style: TextStyle(fontSize: 11)),
-              isExpanded: true,
-              items: _products.map((p) => DropdownMenuItem(value: p, child: Text(p.name, style: const TextStyle(fontSize: 11)))).toList(),
-              onChanged: (v) {
-                if (v != null) {
-                  setState(() {
-                    item['product'] = v;
-                    item['priceController'].text = v.sellingPrice;
-                    item['tax_rate'] = double.tryParse(v.taxRate ?? '0') ?? 0.0;
-                    _updateTotals();
-                  });
-                }
-              },
+          padding: const EdgeInsets.only(left: 4, bottom: 4),
+          child: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 13),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              border: InputBorder.none,
             ),
           ),
-        ),
-        
-        // HSN
-        Center(child: Text(item['product']?.hsn ?? '-', style: const TextStyle(fontSize: 11))),
-        
-        // Unit
-        Center(child: Text(item['product']?.unit ?? '-', style: const TextStyle(fontSize: 11))),
-        
-        // Qty
-        _buildTableInput(item['qtyController']),
-        
-        // Price
-        _buildTableInput(item['priceController']),
-        
-        // Discount
-        _buildTableInput(item['discountController']),
-        
-        // Tax %
-        Center(child: Text('${item['tax_rate']}%', style: const TextStyle(fontSize: 11))),
-        
-        // Net Amt
-        Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Text('₹${netAmt.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11), textAlign: TextAlign.right),
-        ),
-        
-        // Tax Amt
-        Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Text('₹${taxAmt.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11), textAlign: TextAlign.right),
-        ),
-        
-        // Total
-        Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Text('₹${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11), textAlign: TextAlign.right),
-        ),
-
-        // Action
-        IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
-          onPressed: () => _removeItemRow(index),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
         ),
       ],
     );
   }
 
-  Widget _buildTableInput(TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: TextFormField(
-        controller: controller,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 12),
-        keyboardType: TextInputType.number,
-        decoration: const InputDecoration(
-          isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: 8),
-          border: InputBorder.none,
+  Widget _buildTotalItem(String label, double value, {bool isBold = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        const SizedBox(height: 2),
+        Text(
+          '₹${value.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: isBold ? 14 : 12,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            color: isBold ? const Color(0xFF7C3AED) : Colors.black87,
+          ),
         ),
-      ),
+      ],
     );
   }
 

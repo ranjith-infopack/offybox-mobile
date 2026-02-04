@@ -50,19 +50,22 @@ class Outlet {
   });
 
   factory Outlet.fromJson(Map<String, dynamic> json) {
+    // Try to find the ID from various common fields
+    final id = (json['id'] ?? json['_id'] ?? json['uuid'])?.toString() ?? '';
+    
     return Outlet(
-      id: json['id'] ?? '',
+      id: id,
       companyName: json['company_name'] ?? '',
       email: json['email'],
       phone: json['phone'],
       mobile: json['mobile'],
-      creditLimit: json['credit_limit'] ?? '0',
-      outstanding: json['outstanding'] ?? '0',
+      creditLimit: json['credit_limit']?.toString() ?? '0',
+      outstanding: json['outstanding']?.toString() ?? '0',
       outletType: json['outlet_type'],
-      status: json['status'] ?? '',
+      status: json['status']?.toString() ?? '',
       gstn: json['gstn'],
-      outletCategoryId: json['outlet_category_id'],
-      salesPersonId: json['sales_person_id'],
+      outletCategoryId: json['outlet_category_id']?.toString(),
+      salesPersonId: json['sales_person_id']?.toString(),
       outletCategory: json['outlet_category'] != null
           ? LedgerGroup.fromJson(json['outlet_category'])
           : null,
@@ -75,8 +78,8 @@ class Outlet {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'])
           : null,
-      // Addresses array
-      addresses: (json['addresses'] as List<dynamic>?)
+      // Addresses array (trying both 'addresses' and 'outlet_addresses')
+      addresses: ((json['addresses'] ?? json['outlet_addresses']) as List<dynamic>?)
               ?.map((e) => OutletAddress.fromJson(e))
               .toList() ??
           [],
@@ -112,6 +115,14 @@ class Outlet {
       (contactPersonName != null && contactPersonName!.isNotEmpty) ||
       (contactPersonPhone != null && contactPersonPhone!.isNotEmpty) ||
       (contactPersonEmail != null && contactPersonEmail!.isNotEmpty);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Outlet && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class OutletAddress {
@@ -141,16 +152,16 @@ class OutletAddress {
 
   factory OutletAddress.fromJson(Map<String, dynamic> json) {
     return OutletAddress(
-      id: json['id'] ?? '',
-      type: json['type'] ?? '',
-      name: json['name'],
-      address1: json['address1'],
-      address2: json['address2'],
-      pincode: json['pincode'],
-      countryId: json['country_id'],
-      stateId: json['state_id'],
-      cityId: json['city_id'],
-      status: json['status'] ?? '',
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
+      name: json['name']?.toString(),
+      address1: json['address1']?.toString(),
+      address2: json['address2']?.toString(),
+      pincode: json['pincode']?.toString(),
+      countryId: json['country_id']?.toString(),
+      stateId: json['state_id']?.toString(),
+      cityId: json['city_id']?.toString(),
+      status: json['status']?.toString() ?? '',
     );
   }
 
@@ -163,6 +174,14 @@ class OutletAddress {
   }
 
   bool get hasAddress => fullAddress.isNotEmpty;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OutletAddress && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class LedgerGroup {

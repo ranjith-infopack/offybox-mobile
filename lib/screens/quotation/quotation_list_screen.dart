@@ -13,6 +13,7 @@ class QuotationListScreen extends StatefulWidget {
 
 class _QuotationListScreenState extends State<QuotationListScreen> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   
   List<Order> _quotations = [];
   bool _isLoading = true;
@@ -20,6 +21,8 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
   bool _hasMore = true;
   int _currentPage = 1;
   String? _error;
+  String _searchQuery = '';
+  String _selectedStatus = 'All';
 
   @override
   void initState() {
@@ -31,6 +34,7 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -52,6 +56,8 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
         page: 1,
         limit: 20,
         orderType: 'QUOTATION',
+        search: _searchQuery,
+        orderStatus: _selectedStatus,
       );
 
       setState(() {
@@ -80,6 +86,8 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
         page: _currentPage + 1,
         limit: 20,
         orderType: 'QUOTATION',
+        search: _searchQuery,
+        orderStatus: _selectedStatus,
       );
 
       setState(() {
@@ -159,12 +167,31 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
                   ),
                 ],
               ),
-              child: const TextField(
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) {
+                  setState(() {
+                    _searchQuery = v;
+                  });
+                  _loadQuotations();
+                },
                 decoration: InputDecoration(
-                  hintText: 'Search',
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  hintText: 'Search quotations...',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchQuery.isNotEmpty 
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                          _loadQuotations();
+                        },
+                      )
+                    : null,
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
@@ -176,14 +203,11 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _buildFilterChip('All', isSelected: true),
-                const SizedBox(width: 8),
-                _buildFilterChip('Pending'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Accepted'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Cancelled'),
-              ],
+                'All', 'Pending', 'Accepted', 'Cancelled'
+              ].map((status) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildFilterChip(status, isSelected: _selectedStatus == status),
+              )).toList(),
             ),
           ),
         ],
@@ -192,18 +216,26 @@ class _QuotationListScreenState extends State<QuotationListScreen> {
   }
 
   Widget _buildFilterChip(String label, {bool isSelected = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF7C3AED) : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(25),
-        border: isSelected ? null : Border.all(color: Colors.white, width: 1),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
-          fontWeight: FontWeight.w500,
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedStatus = label;
+        });
+        _loadQuotations();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF7C3AED) : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(25),
+          border: isSelected ? null : Border.all(color: Colors.white, width: 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
